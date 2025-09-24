@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from PIL import Image, ImageTk
 import sys
 
 
@@ -13,6 +14,51 @@ def create_entry_grid(root, rows, columns):
             row.append(entry)
         entry_grid.append(row)
     return entry_grid
+
+
+def resize_image(image_path, max_width, max_height):
+    """Resize image while maintaining aspect ratio"""
+    try:
+        # Open the original image
+        original_image = Image.open(image_path)
+        
+        # Get original dimensions
+        orig_width, orig_height = original_image.size
+        
+        # Calculate scaling factor to fit within max dimensions
+        width_ratio = max_width / orig_width
+        height_ratio = max_height / orig_height
+        scale_factor = min(width_ratio, height_ratio)
+        
+        # Calculate new dimensions
+        new_width = int(orig_width * scale_factor)
+        new_height = int(orig_height * scale_factor)
+        
+        # Resize the image
+        resized_image = original_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        return ImageTk.PhotoImage(resized_image)
+    except Exception as e:
+        print(f"Error loading image: {e}")
+        return None
+
+
+def update_image_size(root, image_label, image_path):
+    """Update image size based on current window size"""
+    # Get current window dimensions
+    root.update_idletasks()  # Ensure geometry is updated
+    window_width = root.winfo_width()
+    window_height = root.winfo_height()
+    
+    # Reserve space for the entry grid and buttons (approximately 300px)
+    available_height = max(200, window_height - 300)
+    available_width = max(200, window_width - 100)
+    
+    # Resize and update the image
+    new_image = resize_image(image_path, available_width, available_height)
+    if new_image:
+        image_label.config(image=new_image)
+        image_label.image = new_image  # Keep a reference to prevent garbage collection
 
 
 def check_answers(row_entries, molecule_f, pt):
@@ -76,14 +122,18 @@ def check_answers(row_entries, molecule_f, pt):
 def main():
     root = tk.Tk()
     root.title("Image and Entry Fields")
+    
+    # Set minimum window size
+    root.minsize(600, 500)
+    
+    # Make the window resizable
+    root.resizable(True, True)
 
-    # Load an image
+    # Create image label
     image_label = tk.Label(root)
-    image_label.grid(row=0, column=0, columnspan=5)
-    image_path = "Spectrle_250923.png"  # change
-    image = tk.PhotoImage(file=image_path)
-    image_label.config(image=image)
-
+    image_label.grid(row=0, column=0, columnspan=6, pady=10)
+    
+    image_path = "Test_images/Spectrle_test_ZrO.png"  # change
     molecule = ["Zr", "O"]  # change
 
     periodicTable = periodic_table = {
@@ -184,11 +234,24 @@ def main():
     rows = 5
     columns = 5
     entry_grid = create_entry_grid(root, rows, columns)
+    
     # Create buttons for each row
     for i in range(rows):
         button = tk.Button(root, text="Check", command=lambda row=i: check_answers(
             entry_grid[row], molecule, periodicTable))
         button.grid(row=i+1, column=columns, padx=5, pady=5)
+
+    # Initial image load
+    def on_configure(event=None):
+        """Called when window is resized"""
+        if event and event.widget == root:
+            root.after_idle(lambda: update_image_size(root, image_label, image_path))
+    
+    # Bind window resize event
+    root.bind('<Configure>', on_configure)
+    
+    # Load initial image
+    root.after(100, lambda: update_image_size(root, image_label, image_path))
 
     root.mainloop()
 
