@@ -1,2 +1,5 @@
 /Past_Spectrles
 *.csv
+.venv/
+pyproject.toml
+uv.lock
